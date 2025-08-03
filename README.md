@@ -1,5 +1,7 @@
 <div align="center">
 <h1>RESfM: Robust Deep Equivariant Structure from Motion</h1>
+  
+### [Paper](https://openreview.net/pdf?id=wldwEhQ7cl) | [Project Page](https://robust-equivariant-sfm.github.io/)
 
 
 **[Weizmann Institute of Science](https://www.weizmann.ac.il/pages/)**; **[NVIDIA Research](https://research.nvidia.com/home)**
@@ -24,19 +26,49 @@ Robust Deep Equivariant Structure from Motion (RESfM, ICLR 2025) is a deep-learn
 
 
 ## Quick Start
+This repository is implemented with python 3.8.
+## Setup
 
-First, clone this repository to your local machine, and install the dependencies (torch, torchvision, numpy, Pillow, and huggingface_hub). 
+First, clone this repository to your local machine, and set up the Conda environment with all required dependencies:
 
 ```bash
 git clone https://github.com/FadiKhatib/resfm.git  
 cd resfm
-pip install -r requirements.txt
+conda env create -f environment.yaml
+conda activate resfm
 ```
 
-## Detailed Usage
+### Folders
+The repository should contain the following folders:
+```
+resfm
+├── code
+├── datasets
+│   ├── megadepth
+│   └── 1dsfm
+    └── ...
+├── environment.yml
+├── results
+```
 
-<details>
-<summary>Click to expand</summary>
+### Data and Pretrained Model
+<p>
+Download the data from 
+<a href="https://www.dropbox.com/scl/fi/17vytqklc9tyy68cikjdn/datasets.zip?rlkey=zrzmdvnw8jogurgeos5vyfvsg&st=r2d09j6g&dl=0" target="_blank">this link</a>, 
+and the pretrained model from 
+<a href="https://www.dropbox.com/scl/fi/eqjwgo2zqbscndg2n0y9x/pretrained_model.zip?rlkey=99iou8db1f1kvwk062wlq57ks&st=j5t002qj&dl=0 target="_blank">this link</a>.
+</p>
+
+
+## How to use
+To train RESfM on multiple scenes:
+```
+python multiple_scenes_learning.py --conf confs/RESFM_Learning.conf --wandb 0
+```
+To evaluate RESfM on test scenes using a pretrained checkpoint:
+```
+python multiple_scenes_learning.py --conf confs/RESFM_Learning.conf --wandb 0 --pretrainedPath PATH/TO/CHECKPOINT --phase "FINE_TUNE"
+```
 
 
 
