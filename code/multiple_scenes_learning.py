@@ -10,9 +10,13 @@ import train
 import copy
 
 from lightning.fabric import Fabric
+from lightning.fabric.strategies import DDPStrategy
+fabric = Fabric(
+    accelerator="cuda", 
+    devices="auto", 
+    strategy=DDPStrategy(find_unused_parameters=True)
+    )
 
-fabric = Fabric(accelerator="cuda", devices="auto", strategy="ddp")
-# fabric = Fabric(accelerator="cuda", devices=1)
 fabric.launch()
 
 def main():
@@ -57,6 +61,13 @@ def main():
             # general_utils.write_results(conf, train_errors, file_name="Train") # todo
             general_utils.write_results(conf, validation_errors, file_name="Validation")
             general_utils.write_results(conf, test_errors, file_name="Test")
+            # ===================== SAVE MODEL: save full checkpoint =====================
+            if 'train' in conf and 'save_model_path' in conf['train']:
+                save_path = conf.get_string('train.save_model_path')
+                if len(save_path) > 0:
+                    torch.save(model.state_dict(), save_path)
+                    print(f"checkpoint saved full model to {save_path}")
+            # ========================================================================================
 
         test_scenes = SceneData.create_scene_data_from_list(conf.get_list('dataset.test_set'), conf)
         test_set = ScenesDataSet(test_scenes, return_all=True)
