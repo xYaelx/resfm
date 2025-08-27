@@ -38,7 +38,7 @@ class ScenesDataSet:
             counter = 0
             while 1:
                 data = SceneData.sample_data(current_data, sample_fraction)
-                if dataset_utils.is_valid_sample(data, min_pts_per_cam=3, phase=self.phase) or counter > 0:
+                if utils.dataset_utils.is_valid_sample(data, min_pts_per_cam=3, phase=self.phase) or counter > 0:
                     return data
                 counter += 1
 
@@ -52,5 +52,3 @@ def collate_fn(data):
        default collate function for the dataset
     """
     return data
-
-

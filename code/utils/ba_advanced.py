@@ -61,6 +61,9 @@ def prepare_ba_options():
 
     # Solver settings
     ba_options.solver_options.linear_solver_type = pyceres.LinearSolverType.DENSE_SCHUR
+     # (OPTIONAL) Only set linear_solver_type if it's exposed by pycolmap
+    # if hasattr(ba_options.solver_options, "linear_solver_type"):
+    #     ba_options.solver_options.linear_solver_type = pyceres.LinearSolverType.DENSE_SCHUR
     ba_options.solver_options.function_tolerance = 1e-4
     ba_options.solver_options.max_num_iterations = 300
     ba_options.solver_options.num_threads = 24
@@ -172,7 +175,7 @@ def batch_matrix_to_pycolmap(xs, Rs, ts, Ks, Xs_our=None, shared_camera=False, i
         image_name = img_list[i].strip() if img_list is not None else f"image_{i:06d}.jpg"
 
         image = pycolmap.Image(
-            id=i,
+            # id=i,
             name=image_name,
             camera_id=camera.camera_id,
             cam_from_world=cam_from_world
