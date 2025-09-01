@@ -7,14 +7,19 @@ from utils.sparse_utils import SparseMat
 from datasets.SceneData import SceneData
 from utils import general_utils
 from utils.Phases import Phases
+# Import the new attention-based layer
+from models.attention_layers import AttentionSetOfSetLayer
 
 class SetOfSetBlock(nn.Module):
     def __init__(self, d_in, d_out, conf):
         super(SetOfSetBlock, self).__init__()
         self.block_size = conf.get_int("model.block_size")
         self.use_skip = conf.get_bool("model.use_skip")
-        type_name = conf.get_string("model.layer_type", default='SetOfSetLayer')
-        self.layer_type = general_utils.get_class("models.layers." + type_name)
+        
+        # CHANGED: We get the full class path from the config file now.
+        type_name = conf.get_string("model.layer_type", default='models.layers.SetOfSetLayer')
+        self.layer_type = general_utils.get_class(type_name)
+        
         self.layer_kwargs = dict(conf['model'].get('layer_extra_params', {}))
 
         modules = []
@@ -39,7 +44,6 @@ class SetOfSetBlock(nn.Module):
 
         out = self.final_act(xl)
         return out
-
 
 class SetOfSetOutliersNet(BaseNet):
     def __init__(self, conf, phase=None):
@@ -82,7 +86,6 @@ class SetOfSetOutliersNet(BaseNet):
 
 
     def forward(self, data: SceneData):
-
         x: SparseMat = data.x  # x is [m,n,d] sparse matrix
         x = self.embed(x)
         for eq_block in self.equivariant_blocks:
@@ -90,32 +93,32 @@ class SetOfSetOutliersNet(BaseNet):
 
         if self.mode != 1:
             # outliers predictions
-
             outliers_out = self.outlier_net(x.values)
             outliers_out = torch.sigmoid(outliers_out)
         else:
             outliers_out = None
 
         if self.mode != 2:
-
+            # Aggregate edge features to get camera and point features
+            cam_feats = torch.zeros(x.shape[0], x.values.shape[1], device=x.values.device).scatter_add_(
+                0, x.indices[0, :].unsqueeze(1).expand(-1, x.values.shape[1]), x.values
+            )
+            point_feats = torch.zeros(x.shape[1], x.values.shape[1], device=x.values.device).scatter_add_(
+                0, x.indices[1, :].unsqueeze(1).expand(-1, x.values.shape[1]), x.values
+            )
+            
             # Cameras predictions
-            m_input = x.mean(dim=1) # [m,d_out]
-            m_out = self.m_net(m_input)  # [m, d_m]
-
+            m_out = self.m_net(cam_feats)
+            
             # Points predictions
-            n_input = x.mean(dim=0) # [n,d_out]
-            n_out = self.n_net(n_input).T  # [n, d_n] -> [d_n, n]
-
+            n_out = self.n_net(point_feats).T
+            
             # predict extrinsic matrix
             pred_cam = self.extract_model_outputs(m_out, n_out, data)
-
         else:
             pred_cam = None
 
-
-
         return pred_cam, outliers_out
-
 
 class SetOfSetNet(BaseNet):
     def __init__(self, conf):
@@ -137,24 +140,27 @@ class SetOfSetNet(BaseNet):
 
         self.m_net = get_linear_layers([num_feats] * 2 + [m_d_out], final_layer=True, batchnorm=False)
         self.n_net = get_linear_layers([num_feats] * 2 + [n_d_out], final_layer=True, batchnorm=False)
-
+        
     def forward(self, data: SceneData):
-        x = data.x  # x is [m,n,d] sparse matrix
+        x = data.x # x is [m,n,d] sparse matrix
         x = self.embed(x)
         for eq_block in self.equivariant_blocks:
-            x = eq_block(x)  # [m,n,d_in] -> [m,n,d_out]
-
-        # Cameras predictions
-        m_input = x.mean(dim=1) # [m,d_out]
-        m_out = self.m_net(m_input)  # [m, d_m]
-
-        # Points predictions
-        n_input = x.mean(dim=0) # [n,d_out]
-        n_out = self.n_net(n_input).T  # [n, d_n] -> [d_n, n]
-
-        # predict extrinsic matrix
-        pred_cam = self.extract_model_outputs(m_out, n_out, data)
-
-        return pred_cam, None
-
-
+            x = eq_block(x) # [m,n,d_in] -> [m,n,d_out]
+        
+        # After the attention layers, we can get the camera and point features
+        # from the sparse matrix by aggregating the edge features.
+        # This part of the logic is dependent on how your final layers
+        # (m_net and n_net) are expecting their input.
+        
+        # Aggregate edge features to get camera and point features
+        cam_feats = torch.zeros(x.shape[0], x.values.shape[1], device=x.values.device).scatter_add_(
+            0, x.indices[0, :].unsqueeze(1).expand(-1, x.values.shape[1]), x.values
+        )
+        point_feats = torch.zeros(x.shape[1], x.values.shape[1], device=x.values.device).scatter_add_(
+            0, x.indices[1, :].unsqueeze(1).expand(-1, x.values.shape[1]), x.values
+        )
+        
+        cam_output = self.m_net(cam_feats)
+        point_output = self.n_net(point_feats)
+        
+        return cam_output, point_output
