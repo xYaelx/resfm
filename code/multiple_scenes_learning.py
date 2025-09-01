@@ -1,5 +1,6 @@
 import cv2  # DO NOT REMOVE
 import torch
+import datetime
 
 from utils import general_utils, dataset_utils, path_utils
 from utils.Phases import Phases
@@ -11,17 +12,21 @@ import copy
 
 from lightning.fabric import Fabric
 from lightning.fabric.strategies import DDPStrategy
-fabric = Fabric(
-    accelerator="cuda", 
-    devices="auto", 
-    strategy=DDPStrategy(find_unused_parameters=True)
-    )
-
+# fabric = Fabric(
+#     accelerator="cuda", 
+#     devices="auto", 
+#     strategy=DDPStrategy(find_unused_parameters=True)
+#     )
+fabric = Fabric(accelerator="cuda", devices="auto", strategy="ddp")
 fabric.launch()
 
 def main():
     # Init Experiment
     conf, device, phase = general_utils.init_exp(Phases.TRAINING.name)
+    # Dynamically change the experiment name to include the date and time
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
+    exp_name_with_date = f"{conf.get_string('exp_name')}_{current_date}"
+    conf['exp_name'] = exp_name_with_date
     general_utils.log_code(conf) # Log code to the experiment folder (you can comment this line if you don't want to log the code)`
 
     # Set device
