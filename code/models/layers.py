@@ -104,7 +104,7 @@ class IdentityLayer(Module):
 
 class EmbeddingLayer(Module):
     def __init__(self, multires, in_dim):
-        super(EmbconfeddingLayer, self).__init__()
+        super(EmbeddingLayer, self).__init__()
         if multires > 0:
             self.embed, self.d_out = get_embedder(multires, in_dim)
         else:
